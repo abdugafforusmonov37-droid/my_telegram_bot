@@ -1,0 +1,62 @@
+import asyncio
+import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import CommandStart
+
+TOKEN = os.getenv("BOT_TOKEN")
+GROUP_ID = -1003452140802
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+message_links = {}
+
+WELCOME_TEXT = """
+Hurmatli foydalanuvchi!
+Agar sizda biror e’tiroz yoki taklif bo‘lsa, uni ushbu botga xabar ko‘rinishida yuborishingiz mumkin. Murojaatingiz diqqat bilan ko‘rib chiqiladi va tez orada sizga javob beriladi.
+
+Iltimos, fikringizni aniq va tushunarli tarzda yozing — bu bizga yanada tez javob berishga yordam beradi.
+
+Fikringiz uchun rahmat!
+"""
+
+
+@dp.message(CommandStart())
+async def start(message: types.Message):
+    await message.answer(WELCOME_TEXT)
+
+
+@dp.message()
+async def recv_user_message(message: types.Message):
+    if not message.text:
+        return await message.answer("Iltimos, faqat matnli e’tiroz yuboring.")
+
+    sent = await bot.send_message(
+        GROUP_ID,
+        f"📩 Yangi murojaat:\n\n{message.text}"
+    )
+
+    message_links[sent.message_id] = message.from_user.id
+
+    await message.answer("Murojaatingiz qabul qilindi! ✔")
+
+
+@dp.message()
+async def group_reply(message: types.Message):
+    if message.chat.id == GROUP_ID and message.reply_to_message:
+        replied_msg_id = message.reply_to_message.message_id
+
+        if replied_msg_id in message_links:
+            user_id = message_links[replied_msg_id]
+
+            await bot.send_message(
+                user_id,
+                f"💬 Javob:\n\n{message.text}"
+            )
+
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
